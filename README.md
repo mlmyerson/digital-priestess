@@ -79,6 +79,18 @@ Useful endpoints:
 
 ## Development
 
+### Dev Container
+
+This repo includes a VS Code dev container based on Ubuntu 24.04. Use **Dev Containers: Reopen in Container** to build it.
+
+The workspace is bind-mounted at `/workspaces/digital-priestess`. The container also mounts named Docker volumes into repo-local paths for generated development state:
+
+- `backend/.venv`
+- `frontend/node_modules`
+- `.local`
+
+The container installs backend dev and ingest dependencies plus frontend dependencies during `postCreateCommand`. It forwards ports `5173` and `8787`. Inside the container, `LM_STUDIO_BASE_URL` defaults to `http://host.docker.internal:1234/v1` so the backend can reach LM Studio running on the host machine.
+
 Run backend tests:
 
 ```powershell

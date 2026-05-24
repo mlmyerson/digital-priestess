@@ -51,7 +51,7 @@ class ArchiveChatService:
         if not citations:
             return (
                 "I could not reach LM Studio, and I did not find matching local archive passages. "
-                "Check that ARCHIVE_ROOT is configured and the LM Studio server is running on localhost."
+                "Check that ARCHIVE_ROOT is configured and the LM Studio server endpoint is reachable."
             )
         return (
             "I could not reach LM Studio, so I am returning candidate archive passages instead of a generated answer. "

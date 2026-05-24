@@ -1,9 +1,17 @@
 from hashlib import sha256
+from dataclasses import dataclass
 from pathlib import Path
 
 from app.core.config import Settings
 from app.ingestion.extractors import KNOWN_EXTENSIONS, can_extract_extension, extract_text
 from app.models import ArchiveStatus, SourceDocument
+
+
+@dataclass(frozen=True)
+class ArchiveScanResult:
+    documents: list[SourceDocument]
+    files_seen: int
+    errors: list[str]
 
 
 def get_archive_status(settings: Settings) -> ArchiveStatus:
@@ -36,18 +44,29 @@ def get_archive_status(settings: Settings) -> ArchiveStatus:
 
 
 def load_supported_documents(settings: Settings, limit: int = 500) -> list[SourceDocument]:
+    return scan_supported_documents(settings, limit=limit).documents
+
+
+def scan_supported_documents(settings: Settings, limit: int = 500) -> ArchiveScanResult:
     root = settings.archive_root
     if root is None or not root.exists() or not root.is_dir():
-        return []
+        return ArchiveScanResult(documents=[], files_seen=0, errors=[])
 
     documents: list[SourceDocument] = []
+    files_seen = 0
+    errors: list[str] = []
     for path in _iter_files(root):
         if len(documents) >= limit:
             break
         extension = path.suffix.lower()
         if not can_extract_extension(extension, enable_ocr=settings.enable_ocr):
             continue
-        extracted_text = extract_text(path, enable_ocr=settings.enable_ocr)
+        files_seen += 1
+        try:
+            extracted_text = extract_text(path, enable_ocr=settings.enable_ocr)
+        except Exception as error:
+            errors.append(f"{path}: {error}")
+            continue
         if not extracted_text.text.strip():
             continue
         stat = path.stat()
@@ -69,7 +88,7 @@ def load_supported_documents(settings: Settings, limit: int = 500) -> list[Sourc
                 size_bytes=stat.st_size,
             )
         )
-    return documents
+    return ArchiveScanResult(documents=documents, files_seen=files_seen, errors=errors)
 
 
 def _iter_files(root: Path):

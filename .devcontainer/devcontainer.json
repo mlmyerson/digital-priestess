@@ -1,0 +1,59 @@
+{
+  "name": "Digital Priestess",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "24"
+    }
+  },
+  "workspaceFolder": "/workspaces/digital-priestess",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/digital-priestess,type=bind,consistency=cached",
+  "mounts": [
+    "source=digital-priestess-backend-venv,target=/workspaces/digital-priestess/backend/.venv,type=volume",
+    "source=digital-priestess-frontend-node-modules,target=/workspaces/digital-priestess/frontend/node_modules,type=volume",
+    "source=digital-priestess-local-data,target=/workspaces/digital-priestess/.local,type=volume",
+    "source=digital-priestess-npm-cache,target=/home/vscode/.npm,type=volume",
+    "source=digital-priestess-pip-cache,target=/home/vscode/.cache/pip,type=volume"
+  ],
+  "runArgs": [
+    "--add-host=host.docker.internal:host-gateway"
+  ],
+  "containerEnv": {
+    "APP_HOST": "0.0.0.0",
+    "APP_PORT": "8787",
+    "ARCHIVE_ROOT": "/workspaces/digital-priestess/docs/Writing",
+    "DATA_DIR": "/workspaces/digital-priestess/.local/data",
+    "LM_STUDIO_BASE_URL": "http://host.docker.internal:1234/v1",
+    "VITE_BACKEND_URL": "http://127.0.0.1:8787",
+    "VITE_HOST": "0.0.0.0"
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "forwardPorts": [5173, 8787],
+  "portsAttributes": {
+    "5173": {
+      "label": "Vite frontend",
+      "onAutoForward": "notify"
+    },
+    "8787": {
+      "label": "FastAPI backend",
+      "onAutoForward": "silent"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/workspaces/digital-priestess/backend/.venv/bin/python",
+        "python.terminal.activateEnvironment": true,
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+  "remoteUser": "vscode"
+}

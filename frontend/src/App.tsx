@@ -39,6 +39,7 @@ function App() {
   }, []);
 
   const activeMode = useMemo(() => modes.find((personaMode) => personaMode.id === mode), [modes, mode]);
+  const noticeLabel = error && (error.includes('LM Studio') || error.includes('chat/completions')) ? 'Model fallback' : 'Notice';
 
   async function refreshStatus() {
     try {
@@ -150,18 +151,24 @@ function App() {
                 <Database size={18} aria-hidden="true" />
                 <h2>Archive</h2>
               </div>
+              <div className="archive-summary" aria-label="Archive summary">
+                <div>
+                  <strong>{archive?.readable_files ?? 0}</strong>
+                  <span>files</span>
+                </div>
+                <div>
+                  <strong>{indexStats?.documents ?? 0}</strong>
+                  <span>docs</span>
+                </div>
+                <div>
+                  <strong>{indexStats?.chunks ?? 0}</strong>
+                  <span>chunks</span>
+                </div>
+              </div>
               <dl className="metric-list">
                 <div>
                   <dt>Root</dt>
-                  <dd>{archive?.root ?? 'not set'}</dd>
-                </div>
-                <div>
-                  <dt>Readable</dt>
-                  <dd>{archive?.readable_files ?? 0}</dd>
-                </div>
-                <div>
-                  <dt>Indexed</dt>
-                  <dd>{indexStats ? `${indexStats.documents} docs, ${indexStats.chunks} chunks` : '0 docs'}</dd>
+                  <dd title={archive?.root ?? undefined}>{archive?.root ?? 'not set'}</dd>
                 </div>
                 <div>
                   <dt>Planned</dt>
@@ -186,7 +193,7 @@ function App() {
               <dl className="metric-list">
                 <div>
                   <dt>Endpoint</dt>
-                  <dd>{health?.lm_studio_base_url ?? 'offline'}</dd>
+                  <dd title={health?.lm_studio_base_url ?? undefined}>{health?.lm_studio_base_url ?? 'offline'}</dd>
                 </div>
                 <div>
                   <dt>Boundary</dt>
@@ -197,27 +204,36 @@ function App() {
           </aside>
 
           <section className="chat-panel" aria-label="Chat">
-            <div className="message-list">
+            <div className="message-list" aria-live="polite">
               {messages.map((message) => (
                 <article key={message.id} className={`message ${message.role}`}>
                   <div className="message-meta">{message.role === 'user' ? 'You' : 'Digital Priestess'}</div>
                   <p>{message.content}</p>
+                  {message.role === 'assistant' && message.usedModel === false ? (
+                    <div className="message-note">Answered from archive retrieval</div>
+                  ) : null}
                   {message.citations?.length ? (
-                    <button className="text-button" type="button" onClick={() => setSelectedCitations(message.citations ?? [])}>
-                      View {message.citations.length} citations
+                    <button className="citation-chip" type="button" onClick={() => setSelectedCitations(message.citations ?? [])}>
+                      <span>{message.citations.length}</span>
+                      {message.citations.length === 1 ? 'citation' : 'citations'}
                     </button>
                   ) : null}
                 </article>
               ))}
             </div>
 
-            {error ? <div className="error-banner">{error}</div> : null}
+            {error ? (
+              <div className="error-banner" role="status">
+                <strong>{noticeLabel}</strong>
+                <span>{error}</span>
+              </div>
+            ) : null}
 
             <form className="composer" onSubmit={handleSubmit}>
               <textarea
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                placeholder="Ask the archive"
+                placeholder="Ask for a cited reading"
                 rows={3}
               />
               <button className="send-button" type="submit" disabled={isSending || !input.trim()} title="Send">
@@ -228,13 +244,14 @@ function App() {
           </section>
 
           <aside className="citation-panel" aria-label="Citations">
-            <h2>Citations</h2>
+            <h2>{selectedCitations.length ? `Citations (${selectedCitations.length})` : 'Citations'}</h2>
             {selectedCitations.length ? (
               <div className="citation-list">
-                {selectedCitations.map((citation) => (
+                {selectedCitations.map((citation, citationIndex) => (
                   <article key={citation.chunk_id} className="citation-item">
+                    <div className="citation-kicker">Source {citationIndex + 1}</div>
                     <div className="citation-title">{citation.title}</div>
-                    <div className="citation-path">{citation.path}</div>
+                    <div className="citation-path" title={citation.path}>{citation.path}</div>
                     <p>{citation.snippet}</p>
                     <div className="citation-meta">
                       {citation.source_type}

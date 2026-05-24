@@ -79,13 +79,19 @@ class ArchiveIndex:
             last_indexed_at=last_run,
         )
 
-    def index_documents(self, documents: list[SourceDocument]) -> ArchiveIndexResult:
+    def index_documents(
+        self,
+        documents: list[SourceDocument],
+        scan_errors: list[str] | None = None,
+        documents_seen: int | None = None,
+    ) -> ArchiveIndexResult:
         self.initialize()
         started_at = _utc_now()
         documents_indexed = 0
         documents_skipped = 0
         chunks_indexed = 0
-        errors: list[str] = []
+        errors: list[str] = list(scan_errors or [])
+        seen_count = len(documents) if documents_seen is None else documents_seen
 
         with self._connect() as connection:
             for document in documents:
@@ -186,7 +192,7 @@ class ArchiveIndex:
         return ArchiveIndexResult(
             root=str(self.settings.archive_root) if self.settings.archive_root else None,
             database_path=str(self.database_path),
-            documents_seen=len(documents),
+            documents_seen=seen_count,
             documents_indexed=documents_indexed,
             documents_skipped=documents_skipped,
             chunks_indexed=chunks_indexed,

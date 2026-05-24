@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from app.core.config import Settings, get_settings
-from app.ingestion.scanner import get_archive_status, load_supported_documents
+from app.ingestion.scanner import get_archive_status, scan_supported_documents
 from app.models import (
     ArchiveIndexResult,
     ArchiveIndexStats,
@@ -42,8 +42,12 @@ async def archive_index_status(settings: Settings = Depends(get_settings)) -> Ar
 
 @router.post("/archive/index", response_model=ArchiveIndexResult)
 async def index_archive(settings: Settings = Depends(get_settings)) -> ArchiveIndexResult:
-    documents = load_supported_documents(settings)
-    return ArchiveIndex(settings).index_documents(documents)
+    scan_result = scan_supported_documents(settings)
+    return ArchiveIndex(settings).index_documents(
+        scan_result.documents,
+        scan_errors=scan_result.errors,
+        documents_seen=scan_result.files_seen,
+    )
 
 
 @router.get("/persona/modes", response_model=list[PersonaMode])
