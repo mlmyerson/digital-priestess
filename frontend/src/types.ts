@@ -61,6 +61,11 @@ export type ChatResponse = {
   model_error: string | null;
 };
 
+export type ChatHistoryMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
 export type Message = {
   id: string;
   role: 'user' | 'assistant';

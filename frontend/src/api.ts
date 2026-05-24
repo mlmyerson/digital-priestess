@@ -2,6 +2,7 @@ import type {
   ArchiveIndexResult,
   ArchiveIndexStats,
   ArchiveStatus,
+  ChatHistoryMessage,
   ChatResponse,
   HealthResponse
 } from './types';
@@ -34,9 +35,9 @@ export function indexArchive(): Promise<ArchiveIndexResult> {
   return request<ArchiveIndexResult>('/api/archive/index', { method: 'POST' });
 }
 
-export function sendChat(message: string): Promise<ChatResponse> {
+export function sendChat(message: string, history: ChatHistoryMessage[]): Promise<ChatResponse> {
   return request<ChatResponse>('/api/chat', {
     method: 'POST',
-    body: JSON.stringify({ message, max_citations: 5 })
+    body: JSON.stringify({ message, history, max_citations: 5 })
   });
 }

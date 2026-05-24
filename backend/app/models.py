@@ -11,6 +11,11 @@ class PersonaMode(BaseModel):
     description: str
 
 
+class ChatHistoryMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=8000)
+
+
 class HealthResponse(BaseModel):
     ok: bool
     local_only: bool
@@ -50,6 +55,7 @@ class ArchiveIndexResult(BaseModel):
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=8000)
     mode: PersonaModeName = "aelira"
+    history: list[ChatHistoryMessage] = Field(default_factory=list, max_length=20)
     max_citations: int = Field(default=5, ge=1, le=12)
 
 

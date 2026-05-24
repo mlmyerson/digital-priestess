@@ -44,44 +44,6 @@ repo_path_from_windows_path() {
     fi
 }
 
-for key in APP_HOST APP_PORT LM_STUDIO_BASE_URL LM_STUDIO_MODEL LM_STUDIO_TIMEOUT_SECONDS ARCHIVE_ROOT DATA_DIR ALLOWED_ORIGINS; do
-    load_env_value "$key"
-done
-
-export APP_HOST="${APP_HOST:-0.0.0.0}"
-export APP_PORT="${APP_PORT:-8787}"
-export LM_STUDIO_BASE_URL="${LM_STUDIO_BASE_URL:-http://host.docker.internal:1234/v1}"
-export LM_STUDIO_MODEL="${LM_STUDIO_MODEL:-local-model}"
-export ARCHIVE_ROOT="${ARCHIVE_ROOT:-$ROOT/docs/Writing}"
-export DATA_DIR="${DATA_DIR:-$ROOT/.local/data}"
-export VITE_BACKEND_URL="${VITE_BACKEND_URL:-http://127.0.0.1:${APP_PORT}}"
-export VITE_HOST="${VITE_HOST:-0.0.0.0}"
-export VITE_PORT="${VITE_PORT:-5173}"
-
-if [[ -f /.dockerenv && "$APP_HOST" == "127.0.0.1" ]]; then
-    export APP_HOST="0.0.0.0"
-fi
-
-if [[ -f /.dockerenv && ("$LM_STUDIO_BASE_URL" == "http://127.0.0.1:1234/v1" || "$LM_STUDIO_BASE_URL" == "http://localhost:1234/v1") ]]; then
-    export LM_STUDIO_BASE_URL="http://host.docker.internal:1234/v1"
-fi
-
-if [[ "$ARCHIVE_ROOT" == *\\* ]]; then
-    export ARCHIVE_ROOT="$(repo_path_from_windows_path "$ARCHIVE_ROOT")"
-fi
-
-if [[ "$DATA_DIR" == *\\* ]]; then
-    export DATA_DIR="$(repo_path_from_windows_path "$DATA_DIR")"
-fi
-
-if [[ "$ARCHIVE_ROOT" != /* ]]; then
-    export ARCHIVE_ROOT="$ROOT/$ARCHIVE_ROOT"
-fi
-
-if [[ "$DATA_DIR" != /* ]]; then
-    export DATA_DIR="$ROOT/$DATA_DIR"
-fi
-
 cleanup() {
     echo ""
     echo "Shutting down..."
@@ -90,37 +52,103 @@ cleanup() {
     done
     wait "${PIDS[@]}" 2>/dev/null || true
 }
-trap cleanup EXIT INT TERM
 
-mkdir -p "$DATA_DIR"
+stop_service_on_port() {
+    local port="$1"
+    while IFS= read -r pid; do
+        [[ -z "$pid" ]] && continue
+        kill "$pid" 2>/dev/null && echo "  Killed PID $pid (port $port)" || true
+    done < <(lsof -ti tcp:"$port" 2>/dev/null || true)
+}
 
-if [[ ! -x "$BACKEND_PYTHON" ]]; then
-    python3 -m venv "$BACKEND_DIR/.venv"
-fi
+prepare_environment() {
+    local key=""
+    for key in APP_HOST APP_PORT LM_STUDIO_BASE_URL LM_STUDIO_MODEL LM_STUDIO_TIMEOUT_SECONDS ARCHIVE_ROOT DATA_DIR ALLOWED_ORIGINS; do
+        load_env_value "$key"
+    done
 
-if ! "$BACKEND_PYTHON" -c "import fastapi, uvicorn" >/dev/null 2>&1; then
-    "$BACKEND_PYTHON" -m pip install -e "$BACKEND_DIR[dev,ingest]"
-fi
+    export APP_HOST="${APP_HOST:-0.0.0.0}"
+    export APP_PORT="${APP_PORT:-8787}"
+    export LM_STUDIO_BASE_URL="${LM_STUDIO_BASE_URL:-http://host.docker.internal:1234/v1}"
+    export LM_STUDIO_MODEL="${LM_STUDIO_MODEL:-local-model}"
+    export ARCHIVE_ROOT="${ARCHIVE_ROOT:-$ROOT/docs/Writing}"
+    export DATA_DIR="${DATA_DIR:-$ROOT/.local/data}"
+    export VITE_BACKEND_URL="${VITE_BACKEND_URL:-http://127.0.0.1:${APP_PORT}}"
+    export VITE_HOST="${VITE_HOST:-0.0.0.0}"
+    export VITE_PORT="${VITE_PORT:-5173}"
 
-if [[ ! -d "$FRONTEND_DIR/node_modules" ]]; then
-    npm --prefix "$FRONTEND_DIR" install
-fi
+    if [[ -f /.dockerenv && "$APP_HOST" == "127.0.0.1" ]]; then
+        export APP_HOST="0.0.0.0"
+    fi
 
-echo "Starting backend..."
-(cd "$BACKEND_DIR" && exec "$BACKEND_PYTHON" -m uvicorn app.main:app --host "$APP_HOST" --port "$APP_PORT" --reload) &
-BACKEND_PID=$!
-PIDS+=("$BACKEND_PID")
+    if [[ -f /.dockerenv && ("$LM_STUDIO_BASE_URL" == "http://127.0.0.1:1234/v1" || "$LM_STUDIO_BASE_URL" == "http://localhost:1234/v1") ]]; then
+        export LM_STUDIO_BASE_URL="http://host.docker.internal:1234/v1"
+    fi
 
-echo "Starting frontend..."
-(cd "$FRONTEND_DIR" && exec npm run dev) &
-FRONTEND_PID=$!
-PIDS+=("$FRONTEND_PID")
+    if [[ "$ARCHIVE_ROOT" == *\\* ]]; then
+        export ARCHIVE_ROOT="$(repo_path_from_windows_path "$ARCHIVE_ROOT")"
+    fi
 
-echo "Backend PID: $BACKEND_PID | Frontend PID: $FRONTEND_PID"
-echo "Backend: http://127.0.0.1:$APP_PORT"
-echo "Frontend: Vite will print the active URL, starting with port $VITE_PORT."
-echo "Archive root: $ARCHIVE_ROOT"
-echo "Data dir: $DATA_DIR"
-echo "LM Studio: $LM_STUDIO_BASE_URL ($LM_STUDIO_MODEL)"
-echo "Press Ctrl+C to stop."
-wait -n "${PIDS[@]}"
+    if [[ "$DATA_DIR" == *\\* ]]; then
+        export DATA_DIR="$(repo_path_from_windows_path "$DATA_DIR")"
+    fi
+
+    if [[ "$ARCHIVE_ROOT" != /* ]]; then
+        export ARCHIVE_ROOT="$ROOT/$ARCHIVE_ROOT"
+    fi
+
+    if [[ "$DATA_DIR" != /* ]]; then
+        export DATA_DIR="$ROOT/$DATA_DIR"
+    fi
+}
+
+ensure_dependencies() {
+    mkdir -p "$DATA_DIR"
+
+    if [[ ! -x "$BACKEND_PYTHON" ]]; then
+        python3 -m venv "$BACKEND_DIR/.venv"
+    fi
+
+    if ! "$BACKEND_PYTHON" -c "import fastapi, uvicorn" >/dev/null 2>&1; then
+        "$BACKEND_PYTHON" -m pip install -e "$BACKEND_DIR[dev,ingest]"
+    fi
+
+    if [[ ! -d "$FRONTEND_DIR/node_modules" ]]; then
+        npm --prefix "$FRONTEND_DIR" install
+    fi
+}
+
+start_services() {
+    echo "Starting backend..."
+    (cd "$BACKEND_DIR" && exec "$BACKEND_PYTHON" -m uvicorn app.main:app --host "$APP_HOST" --port "$APP_PORT" --reload) &
+    BACKEND_PID=$!
+    PIDS+=("$BACKEND_PID")
+
+    echo "Starting frontend..."
+    (cd "$FRONTEND_DIR" && exec npm run dev) &
+    FRONTEND_PID=$!
+    PIDS+=("$FRONTEND_PID")
+
+    echo "Backend PID: $BACKEND_PID | Frontend PID: $FRONTEND_PID"
+    echo "Backend: http://127.0.0.1:$APP_PORT"
+    echo "Frontend: Vite will print the active URL, starting with port $VITE_PORT."
+    echo "Archive root: $ARCHIVE_ROOT"
+    echo "Data dir: $DATA_DIR"
+    echo "LM Studio: $LM_STUDIO_BASE_URL ($LM_STUDIO_MODEL)"
+    echo "Press Ctrl+C to stop."
+}
+
+main() {
+    prepare_environment
+    trap cleanup EXIT INT TERM
+
+    echo "Stopping any previous services on ports $APP_PORT and $VITE_PORT..."
+    stop_service_on_port "$APP_PORT"
+    stop_service_on_port "$VITE_PORT"
+
+    ensure_dependencies
+    start_services
+    wait -n "${PIDS[@]}"
+}
+
+main "$@"

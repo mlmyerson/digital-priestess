@@ -6,6 +6,7 @@ import type {
   ArchiveIndexResult,
   ArchiveIndexStats,
   ArchiveStatus,
+  ChatHistoryMessage,
   Citation,
   HealthResponse,
   Message
@@ -77,13 +78,17 @@ function App() {
     }
 
     const userMessage: Message = { id: crypto.randomUUID(), role: 'user', content: trimmedInput };
+    const history: ChatHistoryMessage[] = messages
+      .filter((message) => message.id !== initialMessage.id)
+      .slice(-12)
+      .map((message) => ({ role: message.role, content: message.content }));
     setMessages((currentMessages) => [...currentMessages, userMessage]);
     setInput('');
     setIsSending(true);
     setError(null);
 
     try {
-      const response = await sendChat(trimmedInput);
+      const response = await sendChat(trimmedInput, history);
       const assistantMessage: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',

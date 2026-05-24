@@ -10,6 +10,7 @@ def test_modes_include_aelira_only() -> None:
 def test_aelira_prompt_keeps_grounding_rules_and_file_references() -> None:
     prompt = build_system_prompt("aelira")
 
+    assert "standing permission to search" in prompt
     assert "provided archive passages" in prompt
     assert "citation markers" in prompt
     assert "titles, paths, and line ranges" in prompt
