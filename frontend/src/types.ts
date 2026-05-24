@@ -1,4 +1,4 @@
-export type PersonaModeName = 'archivist' | 'priestess';
+export type PersonaModeName = 'aelira';
 
 export type HealthResponse = {
   ok: boolean;

@@ -3,9 +3,7 @@ import type {
   ArchiveIndexStats,
   ArchiveStatus,
   ChatResponse,
-  HealthResponse,
-  PersonaMode,
-  PersonaModeName
+  HealthResponse
 } from './types';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -36,13 +34,9 @@ export function indexArchive(): Promise<ArchiveIndexResult> {
   return request<ArchiveIndexResult>('/api/archive/index', { method: 'POST' });
 }
 
-export function getPersonaModes(): Promise<PersonaMode[]> {
-  return request<PersonaMode[]>('/api/persona/modes');
-}
-
-export function sendChat(message: string, mode: PersonaModeName): Promise<ChatResponse> {
+export function sendChat(message: string): Promise<ChatResponse> {
   return request<ChatResponse>('/api/chat', {
     method: 'POST',
-    body: JSON.stringify({ message, mode, max_citations: 5 })
+    body: JSON.stringify({ message, max_citations: 5 })
   });
 }

@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-PersonaModeName = Literal["archivist", "priestess"]
+PersonaModeName = Literal["aelira"]
 
 
 class PersonaMode(BaseModel):
@@ -49,7 +49,7 @@ class ArchiveIndexResult(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=8000)
-    mode: PersonaModeName = "archivist"
+    mode: PersonaModeName = "aelira"
     max_citations: int = Field(default=5, ge=1, le=12)
 
 

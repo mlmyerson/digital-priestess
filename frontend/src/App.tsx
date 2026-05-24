@@ -1,16 +1,14 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { BookOpen, Database, RefreshCcw, Send, Sparkles } from 'lucide-react';
 
-import { getArchiveIndexStatus, getArchiveStatus, getHealth, getPersonaModes, indexArchive, sendChat } from './api';
+import { getArchiveIndexStatus, getArchiveStatus, getHealth, indexArchive, sendChat } from './api';
 import type {
   ArchiveIndexResult,
   ArchiveIndexStats,
   ArchiveStatus,
   Citation,
   HealthResponse,
-  Message,
-  PersonaMode,
-  PersonaModeName
+  Message
 } from './types';
 
 const initialMessage: Message = {
@@ -24,8 +22,6 @@ function App() {
   const [archive, setArchive] = useState<ArchiveStatus | null>(null);
   const [indexStats, setIndexStats] = useState<ArchiveIndexStats | null>(null);
   const [lastIndexResult, setLastIndexResult] = useState<ArchiveIndexResult | null>(null);
-  const [modes, setModes] = useState<PersonaMode[]>([]);
-  const [mode, setMode] = useState<PersonaModeName>('archivist');
   const [messages, setMessages] = useState<Message[]>([initialMessage]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -35,10 +31,8 @@ function App() {
 
   useEffect(() => {
     refreshStatus();
-    getPersonaModes().then(setModes).catch((statusError: Error) => setError(statusError.message));
   }, []);
 
-  const activeMode = useMemo(() => modes.find((personaMode) => personaMode.id === mode), [modes, mode]);
   const noticeLabel = error && (error.includes('LM Studio') || error.includes('chat/completions')) ? 'Model fallback' : 'Notice';
 
   async function refreshStatus() {
@@ -89,7 +83,7 @@ function App() {
     setError(null);
 
     try {
-      const response = await sendChat(trimmedInput, mode);
+      const response = await sendChat(trimmedInput);
       const assistantMessage: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
@@ -111,13 +105,13 @@ function App() {
 
   return (
     <main className="app-shell">
-      <section className="workspace" aria-label="Digital Priestess workspace">
+      <section className="workspace" aria-label="Aelira workspace">
         <header className="topbar">
           <div className="brand-lockup">
             <Sparkles aria-hidden="true" size={22} />
             <div>
-              <h1>Digital Priestess</h1>
-              <p>{activeMode?.description ?? 'Local archive companion'}</p>
+              <h1>Aelira</h1>
+              <p>Digital priestess and archivist reading the local archive with cited memory.</p>
             </div>
           </div>
           <div className="status-strip">
@@ -131,21 +125,6 @@ function App() {
 
         <div className="main-grid">
           <aside className="side-panel" aria-label="Archive controls">
-            <div className="mode-switch" role="tablist" aria-label="Persona mode">
-              {modes.map((personaMode) => (
-                <button
-                  key={personaMode.id}
-                  className={personaMode.id === mode ? 'mode-button active' : 'mode-button'}
-                  type="button"
-                  onClick={() => setMode(personaMode.id)}
-                  role="tab"
-                  aria-selected={personaMode.id === mode}
-                >
-                  {personaMode.label}
-                </button>
-              ))}
-            </div>
-
             <div className="panel-block">
               <div className="panel-heading">
                 <Database size={18} aria-hidden="true" />
@@ -207,7 +186,7 @@ function App() {
             <div className="message-list" aria-live="polite">
               {messages.map((message) => (
                 <article key={message.id} className={`message ${message.role}`}>
-                  <div className="message-meta">{message.role === 'user' ? 'You' : 'Digital Priestess'}</div>
+                  <div className="message-meta">{message.role === 'user' ? 'You' : 'Aelira'}</div>
                   <p>{message.content}</p>
                   {message.role === 'assistant' && message.usedModel === false ? (
                     <div className="message-note">Answered from archive retrieval</div>
