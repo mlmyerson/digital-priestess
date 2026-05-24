@@ -35,3 +35,4 @@ archive-cache/
 Thumbs.db
 .vscode/
 !.vscode/tasks.json
+docs/Writing/
